@@ -1,9 +1,17 @@
 use crate::ocr;
 use crossterm::event::{KeyEvent, KeyEventKind};
 use crossterm::{event, execute, terminal};
+use enigo::{
+    Button,
+    Direction::{Press, Release},
+    Enigo, Mouse, Settings,
+    {Coordinate::Abs, Coordinate::Rel},
+};
 use image::{ImageBuffer, Rgba};
+use regex::Regex;
 use scrap::{Capturer, Display};
-use std::io::{stdout, Write};
+use std::io::stdout;
+use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
@@ -23,7 +31,12 @@ pub fn key_listener() -> std::io::Result<()> {
                 match code {
                     event::KeyCode::Char('0') => match capture_screen() {
                         Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
-                            Ok(output) => println!("output:\n{}", output),
+                            Ok(output) => {
+                                if let Some(res) = cpt_basic_arithmetic(output) {
+                                    println!("{res}");
+                                    draw_result();
+                                };
+                            }
                             Err(error) => println!("failed with error: {}", error),
                         },
                         Err(err) => {
@@ -61,10 +74,10 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
             }
         };
 
-        let x = 100; // 起始X坐标
-        let y = 100; // 起始Y坐标
+        let x = 1580; // 起始X坐标
+        let y = 200; // 起始Y坐标
         let capture_width = 300; // 截取区域的宽度
-        let capture_height = 200; // 截取区域的高度
+        let capture_height = 80; // 截取区域的高度
 
         let mut img_buf = ImageBuffer::new(capture_width as u32, capture_height as u32);
 
@@ -90,4 +103,44 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     } else {
         Err("123".into())
     }
+}
+
+fn cpt_basic_arithmetic(formula: String) -> Option<i32> {
+    let re = Regex::new(r"(\d+)\s*([-+*/])\s*(\d+)\s*=").unwrap();
+
+    // 如果匹配到表达式
+    if let Some(captures) = re.captures(&formula) {
+        let num1 = i32::from_str(&captures[1]).unwrap();
+        let operator = &captures[2];
+        let num2 = i32::from_str(&captures[3]).unwrap();
+
+        // 计算结果
+        let result = match operator {
+            "+" => num1 + num2,
+            "-" => num1 - num2,
+            "*" => num1 * num2,
+            "/" => num1 / num2,
+            _ => panic!("Unsupported operator"),
+        };
+        return Some(result);
+    } else {
+        None
+    }
+}
+
+fn draw_result() {
+    let wait_time = Duration::from_millis(10);
+    let mut enigo = Enigo::new(&Settings::default()).unwrap();
+
+    enigo.move_mouse(100, 300, Abs).unwrap();
+    thread::sleep(wait_time);
+    enigo.button(Button::Left, Press).unwrap();
+    thread::sleep(wait_time);
+    enigo.move_mouse(50, 0, Rel).unwrap();
+    thread::sleep(wait_time);
+    enigo.move_mouse(-50, 50, Rel).unwrap();
+    thread::sleep(wait_time);
+    enigo.move_mouse(50, 0, Rel).unwrap();
+    thread::sleep(wait_time);
+    enigo.button(Button::Left, Release).unwrap();
 }
