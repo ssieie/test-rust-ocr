@@ -27,7 +27,7 @@ fn callback(event: Event) {
                     Ok(output) => {
                         if let Some(res) = cpt_basic_arithmetic(output) {
                             println!("{res}");
-                            draw_result();
+                            draw_result(res);
                         };
                     }
                     Err(error) => println!("failed with error: {}", error),
@@ -95,7 +95,7 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     }
 }
 
-fn cpt_basic_arithmetic(formula: String) -> Option<i32> {
+fn cpt_basic_arithmetic(formula: String) -> Option<String> {
     let re = Regex::new(r"(\d+)\s*([-+*/])\s*(\d+)\s*=").unwrap();
 
     // 如果匹配到表达式
@@ -112,13 +112,13 @@ fn cpt_basic_arithmetic(formula: String) -> Option<i32> {
             "/" => num1 / num2,
             _ => panic!("Unsupported operator"),
         };
-        return Some(result);
+        return Some(result.to_string());
     } else {
         None
     }
 }
 
-fn draw_result() {
+fn draw_result(res:String) {
     let wait_time = Duration::from_millis(10);
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
