@@ -1,59 +1,49 @@
 use crate::ocr;
-use crossterm::event::{KeyEvent, KeyEventKind};
-use crossterm::{event, execute, terminal};
 use enigo::{
     Button,
+    Coordinate::{Abs, Rel},
     Direction::{Press, Release},
     Enigo, Mouse, Settings,
-    {Coordinate::Abs, Coordinate::Rel},
 };
 use image::{ImageBuffer, Rgba};
+use rdev::{listen, Event, EventType};
 use regex::Regex;
 use scrap::{Capturer, Display};
-use std::io::stdout;
 use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
-pub fn key_listener() -> std::io::Result<()> {
-    execute!(stdout(), terminal::Clear(terminal::ClearType::All))?;
-    terminal::enable_raw_mode()?;
-
-    loop {
-        // 监听键盘输入
-        if event::poll(Duration::from_millis(100))? {
-            if let event::Event::Key(KeyEvent {
-                code,
-                kind: KeyEventKind::Press,
-                ..
-            }) = event::read()?
-            {
-                match code {
-                    event::KeyCode::Char('0') => match capture_screen() {
-                        Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
-                            Ok(output) => {
-                                if let Some(res) = cpt_basic_arithmetic(output) {
-                                    println!("{res}");
-                                    draw_result();
-                                };
-                            }
-                            Err(error) => println!("failed with error: {}", error),
-                        },
-                        Err(err) => {
-                            println!("123132{err}");
-                        }
-                    },
-                    event::KeyCode::Char('q') => {
-                        println!("Exiting...");
-                        break;
-                    }
-                    _ => {}
-                }
-            }
-        }
+pub fn key_listener() {
+    if let Err(error) = listen(callback) {
+        println!("Error: {:?}", error);
     }
-    terminal::disable_raw_mode()?;
-    Ok(())
+}
+
+fn callback(event: Event) {
+    match event.event_type {
+        EventType::KeyPress(key) => match key {
+            rdev::Key::Kp0 => match capture_screen() {
+                Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
+                    Ok(output) => {
+                        if let Some(res) = cpt_basic_arithmetic(output) {
+                            println!("{res}");
+                            draw_result();
+                        };
+                    }
+                    Err(error) => println!("failed with error: {}", error),
+                },
+                Err(err) => {
+                    println!("123132{err}");
+                }
+            },
+            rdev::Key::KeyQ => {
+                println!("Exiting...");
+                std::process::exit(0);
+            }
+            _ => (),
+        },
+        _ => (),
+    }
 }
 
 fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {

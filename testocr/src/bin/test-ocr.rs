@@ -6,6 +6,6 @@ mod ocr;
 #[path = "../key-listener.rs"]
 mod key_listener;
 
-fn main() -> std::io::Result<()> {
-    key_listener()
+fn main() {
+    key_listener();
 }
