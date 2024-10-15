@@ -6,7 +6,6 @@ pub fn picture_ocr(args: &[&str]) -> Result<String, Box<dyn std::error::Error>> 
         .args(args)
         .output()
         .map_err(|e| e.to_string())?;
-
     if output.status.success() {
         if let Ok(stdout) = str::from_utf8(&output.stdout) {
             Ok(stdout.to_string())
