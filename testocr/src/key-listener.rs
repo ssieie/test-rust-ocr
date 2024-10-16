@@ -64,9 +64,8 @@ fn loop_task() {
     match capture_screen() {
         Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
             Ok(output) => {
-                print!("output: {output}");
-                if let Some(res) = cpt_basic_arithmetic(output) {
-                    print!("{res}\n");
+                if let Some(res) = cpt_basic_arithmetic(&output) {
+                    println!("识别结果:{}计算结果:{}", output, res);
                     draw_result(res);
                 };
             }
@@ -99,8 +98,8 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let x = 1580; // 起始X坐标
-    let y = 530; // 起始Y坐标
+    let x = 1550; // 起始X坐标
+    let y = 470; // 起始Y坐标
     let capture_width = 310; // 截取区域的宽度
     let capture_height = 90; // 截取区域的高度
 
@@ -128,7 +127,7 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn cpt_basic_arithmetic(formula: String) -> Option<String> {
+fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
     let re = Regex::new(r"(\d+)\s*([-+x/])\s*(\d+)\s*=").unwrap();
 
     // 如果匹配到表达式
