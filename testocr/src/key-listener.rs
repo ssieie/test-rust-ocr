@@ -23,7 +23,7 @@ pub fn key_listener() {
 fn callback(event: Event) {
     match event.event_type {
         EventType::KeyPress(key) => match key {
-            // rdev::Key::Kp0 => draw_result("533".into()),
+            // rdev::Key::Kp0 => draw_result("56789".into()),
             rdev::Key::Kp0 => start_task(),
             rdev::Key::Space => stop_task(),
             rdev::Key::KeyQ => {
@@ -47,7 +47,7 @@ fn start_task() {
             drop(state_lock);
             loop_task();
             state_lock = state.lock().unwrap();
-            thread::sleep(Duration::from_millis(100));
+            thread::sleep(Duration::from_millis(300));
         }
     });
 }
@@ -66,7 +66,6 @@ fn loop_task() {
                 if let Some(res) = cpt_basic_arithmetic(output) {
                     print!("{res}\n");
                     draw_result(res);
-                    thread::sleep(Duration::from_millis(280));
                 };
             }
             Err(error) => println!("failed with error: {}", error),
@@ -78,53 +77,53 @@ fn loop_task() {
 }
 
 fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
-    if let Ok(display) = Display::primary() {
-        let (_, height) = (display.width(), display.height());
-        let mut capturer = Capturer::new(display)?;
+    let one_second = Duration::new(1, 0);
+    let one_frame = one_second / 60;
+    let display = Display::primary()?;
+    let mut capturer = Capturer::new(display)?;
 
-        // 等待帧可用
-        let frame = loop {
-            match capturer.frame() {
-                Ok(frame) => break frame, // 成功捕获到帧，退出循环
-                Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    // 等待一小段时间，等待下一帧
-                    thread::sleep(Duration::from_millis(20));
-                    continue;
-                }
-                Err(e) => return Err(Box::new(e)), // 其他错误直接返回
+    let (_, height) = (capturer.width(), capturer.height());
+
+    // 等待帧可用
+    let frame = loop {
+        match capturer.frame() {
+            Ok(frame) => break frame, // 成功捕获到帧，退出循环
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                // 等待一小段时间，等待下一帧
+                thread::sleep(one_frame);
+                continue;
             }
-        };
-
-        let x = 1580; // 起始X坐标
-        let y = 530; // 起始Y坐标
-        let capture_width = 310; // 截取区域的宽度
-        let capture_height = 80; // 截取区域的高度
-
-        let mut img_buf = ImageBuffer::new(capture_width as u32, capture_height as u32);
-
-        // 将捕获到的帧转换为图像缓冲区
-        let stride = frame.len() / height; // 每行的字节数
-        for row in 0..capture_height {
-            for col in 0..capture_width {
-                // 计算像素在帧中的位置
-                let pixel_offset = (y + row) * stride + (x + col) * 4; // 每个像素是4个字节 (BGRA)
-                let b = frame[pixel_offset];
-                let g = frame[pixel_offset + 1];
-                let r = frame[pixel_offset + 2];
-                let a = 255; // 不透明度
-
-                // 将像素存入图像缓冲区
-                img_buf.put_pixel(col as u32, row as u32, Rgba([r, g, b, a]));
-            }
+            Err(e) => return Err(Box::new(e)), // 其他错误直接返回
         }
+    };
 
-        // 保存图像为 PNG 文件
-        img_buf.save("D:/Download/1.png")?;
+    let x = 1580; // 起始X坐标
+    let y = 530; // 起始Y坐标
+    let capture_width = 310; // 截取区域的宽度
+    let capture_height = 80; // 截取区域的高度
 
-        Ok(())
-    } else {
-        Err("123".into())
+    let mut img_buf = ImageBuffer::new(capture_width as u32, capture_height as u32);
+    // 将捕获到的帧转换为图像缓冲区
+    let stride = frame.len() / height; // 每行的字节数
+
+    for row in 0..capture_height {
+        for col in 0..capture_width {
+            // 计算像素在帧中的位置
+            let pixel_offset = (y + row) * stride + (x + col) * 4; // 每个像素是4个字节 (BGRA)
+            let b = frame[pixel_offset];
+            let g = frame[pixel_offset + 1];
+            let r = frame[pixel_offset + 2];
+            let a = 255; // 不透明度
+
+            // 将像素存入图像缓冲区
+            img_buf.put_pixel(col as u32, row as u32, Rgba([r, g, b, a]));
+        }
     }
+
+    // 保存图像为 PNG 文件
+    img_buf.save("D:/Download/1.png")?;
+
+    Ok(())
 }
 
 fn cpt_basic_arithmetic(formula: String) -> Option<String> {
@@ -174,7 +173,7 @@ fn cpt_basic_arithmetic(formula: String) -> Option<String> {
 
 fn draw_result(res: String) {
     //
-    let mut start_x = 1620;
+    let mut start_x = 1590;
     let start_y = 830;
 
     let wait_time = Duration::from_millis(25);
@@ -233,22 +232,22 @@ fn draw_result(res: String) {
 }
 
 const BASIC_W: i32 = 30;
-const BASIC_H: i32 = 80;
+const BASIC_H: i32 = 70;
 
 fn draw_zero(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
     enigo.button(Button::Left, Press).unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
+        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
+    enigo
+        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H, Abs)
+        .unwrap();
     thread::sleep(wait_time);
     enigo.move_mouse(start_x, start_y, Abs).unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x + 1, start_y - 10, Abs).unwrap();
+    enigo.move_mouse(start_x, start_y - 4, Abs).unwrap();
 }
 fn draw_one(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
     enigo.button(Button::Left, Press).unwrap();
@@ -258,28 +257,25 @@ fn draw_one(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) 
     enigo
         .move_mouse(start_x - 5, start_y + BASIC_H, Abs)
         .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 5, start_y + BASIC_H, Abs)
-        .unwrap();
+    // thread::sleep(wait_time);
+    // enigo
+    //     .move_mouse(start_x + 5, start_y + BASIC_H, Abs)
+    //     .unwrap();
 }
 fn draw_two(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
     enigo.button(Button::Left, Press).unwrap();
     thread::sleep(wait_time);
     enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
+    enigo
+        .move_mouse(start_x - 20, start_y + BASIC_H, Abs)
+        .unwrap();
     thread::sleep(wait_time);
     enigo
         .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
         .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W + 5, start_y + BASIC_H, Abs)
-        .unwrap();
 }
 fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    // thread::sleep(Duration::from_millis(100));
     enigo.button(Button::Left, Press).unwrap();
     thread::sleep(wait_time);
     enigo
@@ -287,57 +283,45 @@ fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W - 10, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
         .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2+20, Abs)
+        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W - 10, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 8, start_y + BASIC_H + 4, Abs)
+        .move_mouse(start_x - 10, start_y + BASIC_H, Abs)
         .unwrap();
 }
 fn draw_four(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.move_mouse(start_x + 6, start_y + 6, Abs).unwrap();
+    enigo.move_mouse(start_x + 10, start_y, Abs).unwrap();
     thread::sleep(wait_time);
     enigo.button(Button::Left, Press).unwrap();
+    thread::sleep(wait_time);
+    enigo
+        .move_mouse(start_x - 10, start_y + BASIC_H / 2, Abs)
+        .unwrap();
     thread::sleep(wait_time);
     enigo
         .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
+        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W + 4, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Release).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + 14, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 14, start_y + BASIC_H, Abs)
+        .move_mouse(start_x + BASIC_W / 2, start_y, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + 14, start_y + BASIC_H + 4, Abs)
+        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H, Abs)
         .unwrap();
+    // thread::sleep(wait_time);
+    // enigo
+    //     .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H + 4, Abs)
+    //     .unwrap();
 }
 fn draw_five(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
     enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
@@ -347,18 +331,14 @@ fn draw_five(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32)
     enigo.move_mouse(start_x, start_y, Abs).unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
+        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
+    // thread::sleep(wait_time);
+    // enigo
+    //     .move_mouse(start_x, start_y + BASIC_H - 20, Abs)
+    //     .unwrap();
 }
 fn draw_six(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
     enigo.button(Button::Left, Press).unwrap();
@@ -366,10 +346,6 @@ fn draw_six(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) 
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
         .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
@@ -378,7 +354,7 @@ fn draw_six(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) 
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + 6, start_y + BASIC_H / 2, Abs)
+        .move_mouse(start_x + 1, start_y + BASIC_H / 2, Abs)
         .unwrap();
 }
 fn draw_seven(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
@@ -389,7 +365,7 @@ fn draw_seven(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x, start_y + BASIC_H + 8, Abs)
+        .move_mouse(start_x - 4, start_y + BASIC_H, Abs)
         .unwrap();
 }
 fn draw_eight(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
@@ -399,48 +375,18 @@ fn draw_eight(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32
     thread::sleep(wait_time);
     enigo.button(Button::Left, Press).unwrap();
     thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
+    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
     thread::sleep(wait_time);
     enigo.move_mouse(start_x, start_y, Abs).unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
+        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
         .unwrap();
+    thread::sleep(wait_time);
+    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
     thread::sleep(wait_time);
     enigo
         .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H / 2 + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2 + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2 + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H / 2 + 10, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2 - 4, start_y + BASIC_H / 2 + 10, Abs)
         .unwrap();
 }
 fn draw_nine(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
@@ -454,15 +400,15 @@ fn draw_nine(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32)
         .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
         .unwrap();
     thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
+    enigo
+        .move_mouse(start_x + BASIC_W, start_y, Abs)
+        .unwrap();
     thread::sleep(wait_time);
     enigo
         .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H + 8, Abs)
+        .move_mouse(start_x + BASIC_W, start_y + BASIC_H + 4, Abs)
         .unwrap();
 }
