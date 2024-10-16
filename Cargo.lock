@@ -1160,6 +1160,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
+name = "test-ocr"
+version = "0.1.0"
+dependencies = [
+ "enigo",
+ "image",
+ "lazy_static",
+ "rdev",
+ "regex",
+ "scrap",
+ "windows 0.58.0",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1307,18 +1320,6 @@ name = "wasm-bindgen-shared"
 version = "0.2.95"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65fc09f10666a9f147042251e0dda9c18f166ff7de300607007e96bdebc1068d"
-
-[[package]]
-name = "webservice"
-version = "0.1.0"
-dependencies = [
- "enigo",
- "image",
- "rdev",
- "regex",
- "scrap",
- "windows 0.58.0",
-]
 
 [[package]]
 name = "weezl"
