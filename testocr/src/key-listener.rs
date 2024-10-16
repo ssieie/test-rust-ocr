@@ -21,13 +21,13 @@ pub fn key_listener() {
 }
 
 fn callback(event: Event) {
-    println!("按0启动程序\n按空格停止程序\n按Q退出程序");
     match event.event_type {
         EventType::KeyPress(key) => match key {
+            // rdev::Key::Kp0 => draw_result("533".into()),
             rdev::Key::Kp0 => start_task(),
             rdev::Key::Space => stop_task(),
             rdev::Key::KeyQ => {
-                println!("Exiting...");
+                println!("退出中...");
                 std::process::exit(0);
             }
             _ => (),
@@ -37,6 +37,7 @@ fn callback(event: Event) {
 }
 
 fn start_task() {
+    println!("已开始...");
     let state = global::APP_STATE.clone();
 
     thread::spawn(move || {
@@ -52,6 +53,7 @@ fn start_task() {
 }
 
 fn stop_task() {
+    println!("已停止...");
     let mut state = global::APP_STATE.lock().unwrap();
     state.running = false;
 }
@@ -60,10 +62,11 @@ fn loop_task() {
     match capture_screen() {
         Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
             Ok(output) => {
-                println!("output: {output} =\t");
+                print!("output: {output}\t");
                 if let Some(res) = cpt_basic_arithmetic(output) {
-                    print!("{res}");
+                    print!("{res}\n");
                     draw_result(res);
+                    thread::sleep(Duration::from_millis(280));
                 };
             }
             Err(error) => println!("failed with error: {}", error),
@@ -85,15 +88,15 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
                 Ok(frame) => break frame, // 成功捕获到帧，退出循环
                 Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                     // 等待一小段时间，等待下一帧
-                    thread::sleep(Duration::from_millis(50));
+                    thread::sleep(Duration::from_millis(20));
                     continue;
                 }
                 Err(e) => return Err(Box::new(e)), // 其他错误直接返回
             }
         };
 
-        let x = 1520; // 起始X坐标
-        let y = 500; // 起始Y坐标
+        let x = 1580; // 起始X坐标
+        let y = 530; // 起始Y坐标
         let capture_width = 310; // 截取区域的宽度
         let capture_height = 80; // 截取区域的高度
 
@@ -134,12 +137,26 @@ fn cpt_basic_arithmetic(formula: String) -> Option<String> {
         let num2 = i32::from_str(&captures[3]).unwrap();
 
         //
-        let mut last_nums = global::LAST_NUMS.lock().unwrap();
-        if last_nums.0 == num1 && last_nums.1 == operator && last_nums.2 == num2 {
-            return None;
-        } else {
-            *last_nums = (num1, operator.into(), num2);
-        }
+        // let mut last_formula = global::LAST_FORMULA.lock().unwrap();
+        // if last_formula.0 == num1 && last_formula.1 == operator && last_formula.2 == num2 {
+        //     return None;
+        // } else {
+        //     *last_formula = (num1, operator.to_string(), num2);
+        // }
+
+        // let mut last_nums = global::LAST_NUMS.lock().unwrap();
+        // let key = (num1, operator.to_string(), num2);
+        // match last_nums.get(&key) {
+        //     Some(&n) if n < 2 => {
+        //         last_nums.insert(key, n + 1);
+        //     }
+        //     None => {
+        //         last_nums.insert((num1, operator.into(), num2), 1);
+        //     }
+        //     Some(_) => {
+        //         return None;
+        //     }
+        // };
 
         // 计算结果
         let result = match operator {
@@ -157,10 +174,10 @@ fn cpt_basic_arithmetic(formula: String) -> Option<String> {
 
 fn draw_result(res: String) {
     //
-    let mut start_x = 1580;
-    let start_y = 750;
+    let mut start_x = 1620;
+    let start_y = 830;
 
-    let wait_time = Duration::from_millis(30);
+    let wait_time = Duration::from_millis(25);
     let mut enigo = Enigo::new(&Settings::default()).unwrap();
 
     enigo.move_mouse(start_x, start_y, Abs).unwrap();
@@ -262,10 +279,11 @@ fn draw_two(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) 
         .unwrap();
 }
 fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
+    // thread::sleep(Duration::from_millis(100));
     enigo.button(Button::Left, Press).unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + 10, Abs)
+        .move_mouse(start_x + BASIC_W, start_y + 20, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
@@ -277,7 +295,7 @@ fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32
         .unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
+        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2+20, Abs)
         .unwrap();
     thread::sleep(wait_time);
     enigo
@@ -287,7 +305,7 @@ fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
     thread::sleep(wait_time);
     enigo
-        .move_mouse(start_x + 8, start_y + BASIC_H + 10, Abs)
+        .move_mouse(start_x + 8, start_y + BASIC_H + 4, Abs)
         .unwrap();
 }
 fn draw_four(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
@@ -343,11 +361,7 @@ fn draw_five(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32)
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
 }
 fn draw_six(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
     enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
     thread::sleep(wait_time);
     enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
     thread::sleep(wait_time);
