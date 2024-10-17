@@ -13,6 +13,7 @@ use scrap::{Capturer, Display};
 use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
+// use std::time::Instant;
 
 pub fn key_listener() {
     if let Err(error) = listen(callback) {
@@ -23,7 +24,12 @@ pub fn key_listener() {
 fn callback(event: Event) {
     match event.event_type {
         EventType::KeyPress(key) => match key {
-            // rdev::Key::Kp0 => draw_result("0071".into()),
+            // rdev::Key::Kp0 => {
+            //     let start = Instant::now();
+            //     draw_result("0".into());
+            //     let duration = start.elapsed();
+            //     println!("耗时:{:?}",duration);
+            // },
             rdev::Key::Kp0 => start_task(),
             rdev::Key::Space => stop_task(),
             rdev::Key::KeyQ => {
@@ -73,6 +79,7 @@ fn loop_task() {
         },
         Err(err) => {
             println!("123132{err}");
+            thread::sleep(Duration::from_secs(2));
         }
     }
 }
