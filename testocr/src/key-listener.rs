@@ -8,7 +8,6 @@ use std::process::Command;
 use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
-use std::time::Instant;
 
 const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
 
@@ -30,13 +29,14 @@ pub fn key_listener() {
 fn callback(event: Event) {
     match event.event_type {
         EventType::KeyPress(key) => match key {
-            rdev::Key::Kp0 => {
-                let start = Instant::now();
-                let _ = draw_result("012".into());
-                let duration = start.elapsed();
-                println!("耗时:{:?}",duration);
-            },
-            // rdev::Key::Kp0 => start_task(),
+            // rdev::Key::Kp0 => {
+            //     let start = std::time::Instant::now();
+            //     let _ = draw_result("012".into());
+            //     let duration = start.elapsed();
+            //     println!("耗时:{:?}",duration);
+            // },
+            rdev::Key::Kp0 => start_task(),
+            rdev::Key::KeyR => reset_formula(),
             rdev::Key::Space => stop_task(),
             rdev::Key::KeyQ => {
                 println!("退出中...");
@@ -115,10 +115,10 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let x = 1550; // 起始X坐标
-    let y = 470; // 起始Y坐标
-    let capture_width = 310; // 截取区域的宽度
-    let capture_height = 90; // 截取区域的高度
+    let x = 1590; // 起始X坐标
+    let y = 420; // 起始Y坐标
+    let capture_width = 310; // 截取区域的宽度, 计算模式
+    let capture_height = 100; // 截取区域的高度
 
     let mut img_buf = ImageBuffer::new(capture_width as u32, capture_height as u32);
     // 将捕获到的帧转换为图像缓冲区
@@ -154,12 +154,12 @@ fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
         let num2 = i32::from_str(&captures[3]).unwrap();
 
         //
-        // let mut last_formula = global::LAST_FORMULA.lock().unwrap();
-        // if last_formula.0 == num1 && last_formula.1 == operator && last_formula.2 == num2 {
-        //     return None;
-        // } else {
-        //     *last_formula = (num1, operator.to_string(), num2);
-        // }
+        let mut last_formula = global::LAST_FORMULA.lock().unwrap();
+        if last_formula.0 == num1 && last_formula.1 == operator && last_formula.2 == num2 {
+            return None;
+        } else {
+            *last_formula = (num1, operator.to_string(), num2);
+        }
 
         // let mut last_nums = global::LAST_NUMS.lock().unwrap();
         // let key = (num1, operator.to_string(), num2);
@@ -189,6 +189,11 @@ fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
     }
 }
 
+fn reset_formula() {
+    let mut last_formula = global::LAST_FORMULA.lock().unwrap();
+    *last_formula = (0, "".to_string(), 0);
+}
+
 fn draw_result(res: String) -> Result<(), Box<dyn std::error::Error>> {
     let h: std::sync::MutexGuard<'_, i32> = global::DEVICE_H.lock()?;
     let mut start_x = 90;
@@ -198,47 +203,19 @@ fn draw_result(res: String) -> Result<(), Box<dyn std::error::Error>> {
 
     for c in res.chars() {
         match c {
-            '0' => {
-                swipe_command.push_str(&draw_zero(start_x, start_y));
-                start_x += GAP;
-            }
+            '0' => swipe_command.push_str(&draw_zero(start_x, start_y)),
             '1' => swipe_command.push_str(&draw_one(start_x, start_y)),
-            '2' => {
-                swipe_command.push_str(&draw_two(start_x, start_y));
-                start_x += GAP;
-            }
-            '3' => {
-                swipe_command.push_str(&draw_three(start_x, start_y));
-                start_x += GAP;
-            }
-            '4' => {
-                swipe_command.push_str(&draw_four(start_x, start_y));
-                start_x += GAP;
-            }
-            '5' => {
-                swipe_command.push_str(&draw_five(start_x, start_y));
-                start_x += GAP;
-            }
-            '6' => {
-                swipe_command.push_str(&draw_six(start_x, start_y));
-                start_x += GAP;
-            }
-            '7' => {
-                swipe_command.push_str(&draw_seven(start_x, start_y));
-                start_x += GAP;
-            }
-            '8' => {
-                swipe_command.push_str(&draw_eight(start_x, start_y));
-                start_x += GAP;
-            }
-            '9' => {
-                swipe_command.push_str(&draw_nine(start_x, start_y));
-                start_x += GAP;
-            }
+            '2' => swipe_command.push_str(&draw_two(start_x, start_y)),
+            '3' => swipe_command.push_str(&draw_three(start_x, start_y)),
+            '4' => swipe_command.push_str(&draw_four(start_x, start_y)),
+            '5' => swipe_command.push_str(&draw_five(start_x, start_y)),
+            '6' => swipe_command.push_str(&draw_six(start_x, start_y)),
+            '7' => swipe_command.push_str(&draw_seven(start_x, start_y)),
+            '8' => swipe_command.push_str(&draw_eight(start_x, start_y)),
+            '9' => swipe_command.push_str(&draw_nine(start_x, start_y)),
             _ => (),
         }
-
-        start_x += BASIC_W + 20;
+        start_x += BASIC_W + GAP + 20;
     }
 
     execute_adb_commands(swipe_command)?;
@@ -262,10 +239,12 @@ fn draw_zero(start_x: i32, start_y: i32) -> String {
 }
 
 fn draw_one(start_x: i32, start_y: i32) -> String {
-    let steps = vec![
-        (start_x, start_y, start_x, start_y + BASIC_H),
-        (start_x, start_y + BASIC_H, start_x, start_y + BASIC_H - 10),
-    ];
+    let steps = vec![(
+        start_x + BASIC_W / 2,
+        start_y,
+        start_x + BASIC_W / 2,
+        start_y + BASIC_H,
+    )];
 
     vec_to_string(steps)
 }

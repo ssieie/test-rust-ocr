@@ -12,14 +12,12 @@ mod ocr;
 const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
 
 fn main() {
-    println!("按0启动程序\n按空格停止程序\n按Q退出程序");
-
     let output = Command::new(ADB_PATH).arg("devices").output().unwrap();
 
     if output.status.success() {
         let output_str = String::from_utf8_lossy(&output.stdout);
         if output_str.len() > 28 {
-            println!("模拟设备在线");
+            println!("模拟设备在线...\r\n");
         }
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -40,6 +38,8 @@ fn main() {
         *w = captures[1].parse().unwrap();
         *h = captures[2].parse().unwrap();
     }
+
+    println!("按0启动程序\r\n按空格停止程序\r\n按R重置输入\r\n按Q退出程序");
 
     key_listener();
 }
