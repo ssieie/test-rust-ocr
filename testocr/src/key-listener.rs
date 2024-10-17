@@ -1,19 +1,25 @@
 use crate::global;
 use crate::ocr;
-use enigo::{
-    Button,
-    Coordinate::Abs,
-    Direction::{Press, Release},
-    Enigo, Mouse, Settings,
-};
 use image::{ImageBuffer, Rgba};
 use rdev::{listen, Event, EventType};
 use regex::Regex;
 use scrap::{Capturer, Display};
+use std::process::Command;
 use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
-// use std::time::Instant;
+use std::time::Instant;
+
+const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
+
+const BASIC_W: i32 = 60;
+const BASIC_H: i32 = 120;
+
+const GAP: i32 = 80;
+
+const DURATION: &str = "0";
+
+type Setper = Vec<(i32, i32, i32, i32)>;
 
 pub fn key_listener() {
     if let Err(error) = listen(callback) {
@@ -24,13 +30,13 @@ pub fn key_listener() {
 fn callback(event: Event) {
     match event.event_type {
         EventType::KeyPress(key) => match key {
-            // rdev::Key::Kp0 => {
-            //     let start = Instant::now();
-            //     draw_result("0".into());
-            //     let duration = start.elapsed();
-            //     println!("耗时:{:?}",duration);
-            // },
-            rdev::Key::Kp0 => start_task(),
+            rdev::Key::Kp0 => {
+                let start = Instant::now();
+                let _ = draw_result("012".into());
+                let duration = start.elapsed();
+                println!("耗时:{:?}",duration);
+            },
+            // rdev::Key::Kp0 => start_task(),
             rdev::Key::Space => stop_task(),
             rdev::Key::KeyQ => {
                 println!("退出中...");
@@ -72,14 +78,18 @@ fn loop_task() {
             Ok(output) => {
                 if let Some(res) = cpt_basic_arithmetic(&output) {
                     println!("识别结果:{}计算结果:{}", output, res);
-                    draw_result(res);
+                    match draw_result(res) {
+                        Err(err) => {
+                            println!("{}", err);
+                        }
+                        _ => (),
+                    }
                 };
             }
             Err(error) => println!("failed with error: {}", error),
         },
         Err(err) => {
             println!("123132{err}");
-            thread::sleep(Duration::from_secs(2));
         }
     }
 }
@@ -179,260 +189,265 @@ fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
     }
 }
 
-fn draw_result(res: String) {
-    //
-    let mut start_x = 1610;
-    let start_y = 830;
+fn draw_result(res: String) -> Result<(), Box<dyn std::error::Error>> {
+    let h: std::sync::MutexGuard<'_, i32> = global::DEVICE_H.lock()?;
+    let mut start_x = 90;
+    let start_y = (*h) / 2 + 100;
 
-    let wait_time = Duration::from_millis(20);
-    let mut enigo = Enigo::new(&Settings::default()).unwrap();
+    let mut swipe_command = String::from("");
 
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
     for c in res.chars() {
         match c {
             '0' => {
-                draw_zero(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_zero(start_x, start_y));
+                start_x += GAP;
             }
-            '1' => draw_one(wait_time, &mut enigo, start_x, start_y),
+            '1' => swipe_command.push_str(&draw_one(start_x, start_y)),
             '2' => {
-                draw_two(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_two(start_x, start_y));
+                start_x += GAP;
             }
             '3' => {
-                draw_three(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_three(start_x, start_y));
+                start_x += GAP;
             }
             '4' => {
-                draw_four(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_four(start_x, start_y));
+                start_x += GAP;
             }
             '5' => {
-                draw_five(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_five(start_x, start_y));
+                start_x += GAP;
             }
             '6' => {
-                draw_six(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_six(start_x, start_y));
+                start_x += GAP;
             }
             '7' => {
-                draw_seven(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_seven(start_x, start_y));
+                start_x += GAP;
             }
             '8' => {
-                draw_eight(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_eight(start_x, start_y));
+                start_x += GAP;
             }
             '9' => {
-                draw_nine(wait_time, &mut enigo, start_x, start_y);
-                start_x += 20;
+                swipe_command.push_str(&draw_nine(start_x, start_y));
+                start_x += GAP;
             }
             _ => (),
         }
-        thread::sleep(Duration::from_millis(50));
-        enigo.button(Button::Left, Release).unwrap();
-        thread::sleep(wait_time);
-        start_x += 50;
-        enigo.move_mouse(start_x, start_y, Abs).unwrap();
-        thread::sleep(wait_time);
+
+        start_x += BASIC_W + 20;
     }
 
-    thread::sleep(Duration::from_millis(340));
+    execute_adb_commands(swipe_command)?;
+
+    Ok(())
 }
 
-const BASIC_W: i32 = 30;
-const BASIC_H: i32 = 70;
+fn draw_zero(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x + BASIC_W, start_y),
+        (
+            start_x + BASIC_W,
+            start_y,
+            start_x + BASIC_W / 2,
+            start_y + BASIC_H,
+        ),
+        (start_x + BASIC_W / 2, start_y + BASIC_H, start_x, start_y),
+    ];
 
-fn draw_zero(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 4, start_y + BASIC_H / 2, Abs)
-        .unwrap();
+    vec_to_string(steps)
 }
-fn draw_one(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x - 5, start_y + BASIC_H, Abs)
-        .unwrap();
-    // thread::sleep(wait_time);
-    // enigo
-    //     .move_mouse(start_x + 5, start_y + BASIC_H, Abs)
-    //     .unwrap();
+
+fn draw_one(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x, start_y + BASIC_H),
+        (start_x, start_y + BASIC_H, start_x, start_y + BASIC_H - 10),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_two(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x - 20, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
-        .unwrap();
+
+fn draw_two(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x + BASIC_W, start_y),
+        (start_x + BASIC_W, start_y, start_x, start_y + BASIC_H),
+        (
+            start_x,
+            start_y + BASIC_H,
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+        ),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_three(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + 20, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x - 10, start_y + BASIC_H, Abs)
-        .unwrap();
+
+fn draw_three(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x + BASIC_W, start_y + BASIC_H / 3),
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H / 3,
+            start_x,
+            start_y + BASIC_H / 2,
+        ),
+        (
+            start_x,
+            start_y + BASIC_H / 2,
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+        ),
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+            start_x,
+            start_y + BASIC_H,
+        ),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_four(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.move_mouse(start_x + 10, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x - 10, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H + 4, Abs)
-        .unwrap();
+
+fn draw_four(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x, start_y + BASIC_H / 2),
+        (
+            start_x,
+            start_y + BASIC_H / 2,
+            start_x + BASIC_W,
+            start_y + BASIC_H / 2,
+        ),
+        (
+            start_x + BASIC_W / 2,
+            start_y,
+            start_x + BASIC_W / 2,
+            start_y + BASIC_H,
+        ),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_five(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W + 10, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
-    // thread::sleep(wait_time);
-    // enigo
-    //     .move_mouse(start_x, start_y + BASIC_H - 20, Abs)
-    //     .unwrap();
+
+fn draw_five(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x, start_y + BASIC_H / 2),
+        (
+            start_x,
+            start_y + BASIC_H / 2,
+            start_x + BASIC_W,
+            start_y + BASIC_H / 2,
+        ),
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H / 2,
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+        ),
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+            start_x,
+            start_y + BASIC_H,
+        ),
+        (start_x, start_y, start_x + BASIC_W, start_y),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_six(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 1, start_y + BASIC_H / 2, Abs)
-        .unwrap();
+
+fn draw_six(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x, start_y + BASIC_H),
+        (
+            start_x,
+            start_y + BASIC_H,
+            start_x + BASIC_W,
+            start_y + BASIC_H / 2,
+        ),
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H / 2,
+            start_x,
+            start_y + BASIC_H / 2,
+        ),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_seven(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 10, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + 4, start_y + BASIC_H, Abs)
-        .unwrap();
+
+fn draw_seven(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (start_x, start_y, start_x + BASIC_W, start_y),
+        (start_x + BASIC_W, start_y, start_x, start_y + BASIC_H),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_eight(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y + BASIC_H, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W / 2, start_y + BASIC_H / 2, Abs)
-        .unwrap();
+
+fn draw_eight(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (
+            start_x + BASIC_W / 2,
+            start_y + BASIC_H / 2,
+            start_x,
+            start_y,
+        ),
+        (start_x, start_y, start_x + BASIC_W, start_y),
+        (start_x + BASIC_W, start_y, start_x, start_y + BASIC_H),
+        (
+            start_x,
+            start_y + BASIC_H,
+            start_x + BASIC_W,
+            start_y + BASIC_H,
+        ),
+        (start_x + BASIC_W, start_y + BASIC_H, start_x, start_y),
+    ];
+
+    vec_to_string(steps)
 }
-fn draw_nine(wait_time: Duration, enigo: &mut Enigo, start_x: i32, start_y: i32) {
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.button(Button::Left, Press).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x, start_y + BASIC_H / 2, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo.move_mouse(start_x + BASIC_W, start_y, Abs).unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H, Abs)
-        .unwrap();
-    thread::sleep(wait_time);
-    enigo
-        .move_mouse(start_x + BASIC_W, start_y + BASIC_H + 4, Abs)
-        .unwrap();
+
+fn draw_nine(start_x: i32, start_y: i32) -> String {
+    let steps = vec![
+        (
+            start_x + BASIC_W,
+            start_y + BASIC_H / 3,
+            start_x,
+            start_y + BASIC_H / 3,
+        ),
+        (start_x, start_y + BASIC_H / 3, start_x, start_y),
+        (start_x, start_y, start_x + BASIC_W, start_y),
+        (start_x + BASIC_W, start_y, start_x, start_y + BASIC_H),
+    ];
+
+    vec_to_string(steps)
+}
+
+fn vec_to_string(steps: Setper) -> String {
+    let commands: Vec<Vec<String>> = steps
+        .iter()
+        .map(|&(x1, y1, x2, y2)| {
+            vec![
+                "input".to_string(),
+                "swipe".to_string(),
+                x1.to_string(),
+                y1.to_string(),
+                x2.to_string(),
+                y2.to_string(),
+                DURATION.to_string(),
+            ]
+        })
+        .collect();
+
+    let swipe_commands: Vec<String> = commands.iter().map(|cmd| cmd.join(" ")).collect();
+
+    format!("{}; ", swipe_commands.join("; "))
+}
+
+fn execute_adb_commands(arg: String) -> Result<(), Box<dyn std::error::Error>> {
+    Command::new(ADB_PATH).arg("shell").arg(arg).output()?;
+
+    Ok(())
 }
