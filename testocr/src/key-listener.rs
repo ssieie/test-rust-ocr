@@ -89,7 +89,7 @@ fn loop_task() {
             Err(error) => println!("failed with error: {}", error),
         },
         Err(err) => {
-            println!("123132{err}");
+            println!("截图错误: {err}");
         }
     }
 }
@@ -139,7 +139,7 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 保存图像为 PNG 文件
-    img_buf.save("D:/Download/1.png")?;
+    img_buf.save("D:/Download/1.png").expect("保存图片错误");
 
     Ok(())
 }
