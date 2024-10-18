@@ -9,7 +9,11 @@ use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
+// Physical size: 1080x2400
+
 const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
+
+const PICTURN_PATH: &str = "D:/Download/xiao_yuan_kou_suan/1.png";
 
 const BASIC_W: i32 = 60;
 const BASIC_H: i32 = 120;
@@ -74,20 +78,22 @@ fn stop_task() {
 
 fn loop_task() {
     match capture_screen() {
-        Ok(_) => match ocr::picture_ocr(&["D:/Download/1.png", "-", "-l", "eng"]) {
-            Ok(output) => {
-                if let Some(res) = cpt_basic_arithmetic(&output) {
-                    println!("识别结果:{}计算结果:{}", output, res);
-                    match draw_result(res) {
-                        Err(err) => {
-                            println!("{}", err);
+        Ok(_) => {
+            match ocr::picture_ocr(&[PICTURN_PATH, "-", "-l", "eng"]) {
+                Ok(output) => {
+                    if let Some(res) = cpt_basic_arithmetic(&output) {
+                        println!("识别结果:{}计算结果:{}", output, res);
+                        match draw_result(res) {
+                            Err(err) => {
+                                println!("{}", err);
+                            }
+                            _ => (),
                         }
-                        _ => (),
-                    }
-                };
+                    };
+                }
+                Err(error) => println!("failed with error: {}", error),
             }
-            Err(error) => println!("failed with error: {}", error),
-        },
+        }
         Err(err) => {
             println!("截图错误: {err}");
         }
@@ -115,10 +121,10 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let x = 1590; // 起始X坐标
-    let y = 420; // 起始Y坐标
-    let capture_width = 310; // 截取区域的宽度, 计算模式
-    let capture_height = 100; // 截取区域的高度
+    let x = 1580; // 起始X坐标
+    let y = 400; // 起始Y坐标
+    let capture_width = 300; // 截取区域的宽度, 计算模式
+    let capture_height = 110; // 截取区域的高度
 
     let mut img_buf = ImageBuffer::new(capture_width as u32, capture_height as u32);
     // 将捕获到的帧转换为图像缓冲区
@@ -138,14 +144,42 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
+    // 处理图像以进行灰度化和二值化
+    // let processed_img = process_image(&img_buf);
+
     // 保存图像为 PNG 文件
-    img_buf.save("D:/Download/1.png").expect("保存图片错误");
+    img_buf
+        .save(PICTURN_PATH)
+        .expect("保存图片错误");
 
     Ok(())
 }
 
+// fn process_image(img_buf: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {
+//     let (width, height) = img_buf.dimensions();
+//     let mut gray_img = ImageBuffer::new(width, height);
+
+//     for (x, y, pixel) in img_buf.enumerate_pixels() {
+//         let Rgba([r, g, b, _]) = *pixel; // 提取RGBA值
+//         let gray = (0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32) as u8; // 计算灰度值
+//         gray_img.put_pixel(x, y, Luma([gray])); // 将灰度值存入灰度图像
+//     }
+
+//     // 应用二值化
+//     let binary_img: GrayImage = ImageBuffer::from_fn(width, height, |x, y| {
+//         let Luma([luma]) = gray_img.get_pixel(x, y);
+//         if luma > &150u8 {
+//             Luma([255]) // 白色
+//         } else {
+//             Luma([0]) // 黑色
+//         }
+//     });
+
+//     binary_img
+// }
+
 fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
-    let re = Regex::new(r"(\d+)\s*([-+x/])\s*(\d+)\s*=").unwrap();
+    let re = Regex::new(r"(\d+)\s*([-+x/])\s*(\d+)\s*").unwrap();
 
     // 如果匹配到表达式
     if let Some(captures) = re.captures(&formula) {
