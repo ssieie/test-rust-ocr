@@ -78,22 +78,23 @@ fn stop_task() {
 
 fn loop_task() {
     match capture_screen() {
-        Ok(_) => {
-            match ocr::picture_ocr(&[PICTURN_PATH, "-", "-l", "eng"]) {
-                Ok(output) => {
-                    if let Some(res) = cpt_basic_arithmetic(&output) {
-                        println!("识别结果:{}计算结果:{}", output, res);
-                        match draw_result(res) {
-                            Err(err) => {
-                                println!("{}", err);
-                            }
-                            _ => (),
+        Ok(_) => match ocr::picture_ocr(&[PICTURN_PATH, "-", "-l", "eng"]) {
+            Ok(output) => {
+                if let Some(res) = cpt_basic_arithmetic(&output) {
+                    println!("识别结果:{}计算结果:{}", output, res);
+                    match draw_result(res) {
+                        Err(err) => {
+                            println!("{}", err);
                         }
-                    };
+                        _ => (),
+                    }
+                }else {
+                    // thread::sleep(Duration::from_millis(400));
+                    // reset_formula();
                 }
-                Err(error) => println!("failed with error: {}", error),
             }
-        }
+            Err(error) => println!("failed with error: {}", error),
+        },
         Err(err) => {
             println!("截图错误: {err}");
         }
@@ -148,10 +149,7 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     // let processed_img = process_image(&img_buf);
 
     // 保存图像为 PNG 文件
-    img_buf
-        .save(PICTURN_PATH)
-        .expect("保存图片错误");
-
+    img_buf.save(PICTURN_PATH).expect("保存图片错误");
     Ok(())
 }
 

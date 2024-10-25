@@ -8,6 +8,8 @@ mod global;
 mod key_listener;
 #[path = "../ocr.rs"]
 mod ocr;
+#[path = "../window.rs"]
+mod wid;
 
 const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
 
@@ -40,6 +42,8 @@ fn main() {
     }
 
     println!("按0启动程序\r\n按空格停止程序\r\n按R重置输入\r\n按Q退出程序");
+
+    // wid::create_window();
 
     key_listener();
 }
