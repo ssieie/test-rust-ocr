@@ -78,7 +78,6 @@ fn loop_task() {
     match capture_screen() {
         Ok(img_buf) => match ocr::picture_ocr(&img_buf) {
             Ok(output) => {
-                println!("{output}");
                 if let Some(res) = cpt_basic_arithmetic(&output) {
                     println!("识别结果:{}计算结果:{}", output, res);
                     match draw_result(res) {
@@ -187,6 +186,7 @@ fn cpt_basic_arithmetic(formula: &str) -> Option<String> {
         //
         let mut last_formula = global::LAST_FORMULA.lock().unwrap();
         if last_formula.0 == num1 && last_formula.1 == operator && last_formula.2 == num2 {
+            // *last_formula = (0, "".to_string(), 0);
             return None;
         } else {
             *last_formula = (num1, operator.to_string(), num2);
@@ -399,12 +399,6 @@ fn draw_seven(start_x: i32, start_y: i32) -> String {
 
 fn draw_eight(start_x: i32, start_y: i32) -> String {
     let steps = vec![
-        (
-            start_x + BASIC_W / 2,
-            start_y + BASIC_H / 2,
-            start_x,
-            start_y,
-        ),
         (start_x, start_y, start_x + BASIC_W, start_y),
         (start_x + BASIC_W, start_y, start_x, start_y + BASIC_H),
         (
@@ -414,6 +408,7 @@ fn draw_eight(start_x: i32, start_y: i32) -> String {
             start_y + BASIC_H,
         ),
         (start_x + BASIC_W, start_y + BASIC_H, start_x, start_y),
+        (start_x, start_y, start_x, start_y + 10),
     ];
 
     vec_to_string(steps)

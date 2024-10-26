@@ -12,13 +12,10 @@ pub fn picture_ocr(
 ) -> Result<String, Box<dyn std::error::Error>> {
     
     let mut img_data = Vec::new();
-    img_buf.write_to(&mut Cursor::new(&mut img_data), ImageFormat::Bmp)?;
+    img_buf.write_to(&mut Cursor::new(&mut img_data), ImageFormat::Png)?;
 
-    // let mut file = std::fs::File::create("output.bmp")?;
+    // let mut file = std::fs::File::create("output.png")?;
     // file.write_all(&img_data)?;
-
-    let saved_data = std::fs::read("output.bmp")?;
-    assert_eq!(img_data, saved_data, "Data mismatch!");
 
     let cursor = Cursor::new(img_data);
 
