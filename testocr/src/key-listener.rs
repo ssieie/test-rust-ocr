@@ -13,8 +13,6 @@ use std::time::Duration;
 
 const ADB_PATH: &str = "D:/developmentTools/androidSdk/platform-tools/adb.exe";
 
-const PICTURN_PATH: &str = "D:/Download/xiao_yuan_kou_suan/1.png";
-
 const BASIC_W: i32 = 60;
 const BASIC_H: i32 = 120;
 
@@ -78,8 +76,9 @@ fn stop_task() {
 
 fn loop_task() {
     match capture_screen() {
-        Ok(_) => match ocr::picture_ocr(&[PICTURN_PATH, "-", "-l", "eng"]) {
+        Ok(img_buf) => match ocr::picture_ocr(&img_buf) {
             Ok(output) => {
+                println!("{output}");
                 if let Some(res) = cpt_basic_arithmetic(&output) {
                     println!("识别结果:{}计算结果:{}", output, res);
                     match draw_result(res) {
@@ -88,7 +87,7 @@ fn loop_task() {
                         }
                         _ => (),
                     }
-                }else {
+                } else {
                     // thread::sleep(Duration::from_millis(400));
                     // reset_formula();
                 }
@@ -101,7 +100,7 @@ fn loop_task() {
     }
 }
 
-fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
+fn capture_screen() -> Result<ImageBuffer<Rgba<u8>, Vec<u8>>, Box<dyn std::error::Error>> {
     let one_second = Duration::new(1, 0);
     let one_frame = one_second / 60;
     let display = Display::primary()?;
@@ -149,8 +148,8 @@ fn capture_screen() -> Result<(), Box<dyn std::error::Error>> {
     // let processed_img = process_image(&img_buf);
 
     // 保存图像为 PNG 文件
-    img_buf.save(PICTURN_PATH).expect("保存图片错误");
-    Ok(())
+    // img_buf.save(PICTURN_PATH).expect("保存图片错误");
+    Ok(img_buf)
 }
 
 // fn process_image(img_buf: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> GrayImage {

@@ -1,19 +1,34 @@
-use std::process::{Command, Output};
-use std::str;
+use std::io::Cursor;
 
-pub fn picture_ocr(args: &[&str]) -> Result<String, Box<dyn std::error::Error>> {
-    let output: Output = Command::new("D:/Download/tesseract/tesseract.exe")
-        .args(args)
-        .output()
-        .map_err(|e| e.to_string())?;
-    if output.status.success() {
-        if let Ok(stdout) = str::from_utf8(&output.stdout) {
-            Ok(stdout.to_string())
-        } else {
-            Err("213".into())
-        }
-    } else {
-        let stderr = str::from_utf8(&output.stderr).unwrap_or("Unknown error occurred");
-        Err(stderr.into())
-    }
+use image::{ImageBuffer, Rgba};
+use rusty_tesseract::{
+    image::{ImageFormat, ImageReader},
+    Args, Image,
+};
+// use std::io::Write;
+
+pub fn picture_ocr(
+    img_buf: &ImageBuffer<Rgba<u8>, Vec<u8>>,
+) -> Result<String, Box<dyn std::error::Error>> {
+    
+    let mut img_data = Vec::new();
+    img_buf.write_to(&mut Cursor::new(&mut img_data), ImageFormat::Bmp)?;
+
+    // let mut file = std::fs::File::create("output.bmp")?;
+    // file.write_all(&img_data)?;
+
+    let saved_data = std::fs::read("output.bmp")?;
+    assert_eq!(img_data, saved_data, "Data mismatch!");
+
+    let cursor = Cursor::new(img_data);
+
+    let dynamic_image = ImageReader::new(cursor).with_guessed_format()?.decode()?;
+
+    let img = Image::from_dynamic_image(&dynamic_image)?;
+
+    let my_args = Args::default();
+
+    let output = rusty_tesseract::image_to_string(&img, &my_args)?;
+
+    Ok(output)
 }
